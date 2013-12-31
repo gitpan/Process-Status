@@ -1,7 +1,7 @@
 
 
 This archive contains the distribution Process-Status,
-version 0.001:
+version 0.002:
 
   a handle on process termination, like $?
 

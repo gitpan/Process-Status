@@ -1,4 +1,7 @@
 Revision history for Process-Status
 
+0.002     2013-12-31 12:34:55 America/New_York
+        - tweaks here and there, mostly add ->as_string
+
 0.001     2013-12-30 12:19:59 America/New_York
         - first release

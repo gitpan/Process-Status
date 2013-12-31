@@ -20,7 +20,7 @@ resources:
   bugtracker: https://github.com/rjbs/Process-Status/issues
   homepage: https://github.com/rjbs/Process-Status
   repository: https://github.com/rjbs/Process-Status.git
-version: 0.001
+version: 0.002
 x_Dist_Zilla:
   perl:
     version: 5.018001
@@ -156,7 +156,8 @@ x_Dist_Zilla:
       class: Dist::Zilla::Plugin::PodWeaver
       config:
         Dist::Zilla::Plugin::PodWeaver:
-          config_plugin: '@RJBS'
+          config_plugins:
+            - '@RJBS'
           finder:
             - ':InstallModules'
             - ':ExecFiles'
@@ -234,7 +235,7 @@ x_Dist_Zilla:
               name: '@RJBS/List'
               version: 4.005
       name: '@RJBS/PodWeaver'
-      version: 4.002
+      version: 4.003
     -
       class: Dist::Zilla::Plugin::GithubMeta
       name: '@RJBS/GithubMeta'

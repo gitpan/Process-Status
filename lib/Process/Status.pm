@@ -2,9 +2,11 @@ use strict;
 use warnings;
 package Process::Status;
 {
-  $Process::Status::VERSION = '0.001';
+  $Process::Status::VERSION = '0.002';
 }
 # ABSTRACT: a handle on process termination, like $?
+
+use Config ();
 
 
 sub _self { ref $_[0] ? $_[0] : $_[0]->new($?); }
@@ -26,10 +28,10 @@ sub is_success  { ${ $_[0]->_self } == 0 }
 sub exitstatus { ${ $_[0]->_self } >> 8   }
 
 
-sub signal     { ${ $_[0]->_self } &  127 }
+sub signal     { ${ $_[0]->_self } & 127 }
 
 
-sub cored      { ${ $_[0]->_self } &  128 }
+sub cored      { !! (${ $_[0]->_self } & 128) }
 
 
 sub as_struct {
@@ -41,10 +43,32 @@ sub as_struct {
     pid_t => $pid_t,
     ($pid_t == -1 ? () : (
       exitstatus => $pid_t >> 8,
-      signal     => $pid_t & 127,
-      cored      => $pid_t & 128,
+      cored      => ($pid_t & 128) ? 1 : 0,
+
+      (($pid_t & 127) ? (signal => $pid_t & 127) : ())
     )),
   };
+}
+
+my %SIGNAME;
+sub __signal_name {
+  my ($signal) = @_;
+  unless (%SIGNAME) {
+    my @names = split /\x20/, $Config::Config{sig_name};
+    $SIGNAME{$_} = "SIG$names[$_]" for (1 .. $#names);
+  }
+
+  return($SIGNAME{ $signal } || "signal $signal");
+}
+
+sub as_string {
+  my $self  = $_[0]->_self;
+  my $pid_t = $$self;
+  my $str  = "exited " . ($pid_t >> 8);
+  $str .= ", caught " . __signal_name($pid_t & 127) if $pid_t & 127;
+  $str .= "; dumped core" if $pid_t & 128;
+
+  return $str;
 }
 
 1;
@@ -61,7 +85,7 @@ Process::Status - a handle on process termination, like $?
 
 =head1 VERSION
 
-version 0.001
+version 0.002
 
 =head1 OVERVIEW
 
