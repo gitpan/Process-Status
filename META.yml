@@ -20,7 +20,7 @@ resources:
   bugtracker: https://github.com/rjbs/Process-Status/issues
   homepage: https://github.com/rjbs/Process-Status
   repository: https://github.com/rjbs/Process-Status.git
-version: '0.004'
+version: '0.005'
 x_Dist_Zilla:
   perl:
     version: '5.021001'
@@ -293,7 +293,7 @@ x_Dist_Zilla:
         Dist::Zilla::Plugin::Git::Tag:
           branch: ~
           signed: 0
-          tag: '0.004'
+          tag: '0.005'
           tag_format: '%v'
           tag_message: v%v
           time_zone: local

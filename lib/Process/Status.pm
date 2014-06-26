@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package Process::Status;
 # ABSTRACT: a handle on process termination, like $?
-$Process::Status::VERSION = '0.004';
+$Process::Status::VERSION = '0.005';
 use Config ();
 
 #pod =head1 OVERVIEW
@@ -39,14 +39,14 @@ sub new {
   return bless [ $status, "$!", 0+$! ], 'Process::Status::Negative';
 }
 
-#pod =method return_code
+#pod =method status_code
 #pod
 #pod This returns the value of the integer return value, as you might have found in
 #pod C<$?>.
 #pod
 #pod =cut
 
-sub return_code {
+sub status_code {
   ${ $_[0]->_self }
 }
 
@@ -98,10 +98,10 @@ sub cored      { !! (${ $_[0]->_self } & 128) }
 sub as_struct {
   my $self = $_[0]->_self;
 
-  my $rc = $self->return_code;
+  my $rc = $self->status_code;
 
   return {
-    return_code => $rc,
+    status_code => $rc,
     ($rc == -1 ? () : (
       exitstatus => $rc >> 8,
       cored      => ($rc & 128) ? 1 : 0,
@@ -134,9 +134,9 @@ sub as_string {
 
 {
   package Process::Status::Negative;
-$Process::Status::Negative::VERSION = '0.004';
+$Process::Status::Negative::VERSION = '0.005';
 BEGIN { our @ISA = 'Process::Status' }
-  sub return_code { $_[0][0] }
+  sub status_code { $_[0][0] }
   sub pid_t       { $_[0][0] } # historical nonsense
   sub is_success  { return }
   sub exitstatus  { $_[0][0] }
@@ -145,7 +145,7 @@ BEGIN { our @ISA = 'Process::Status' }
 
   sub as_struct {
     return {
-      return_code => $_[0][0],
+      status_code => $_[0][0],
       strerror    => $_[0][1],
       errno       => $_[0][2],
     }
@@ -170,7 +170,7 @@ Process::Status - a handle on process termination, like $?
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 OVERVIEW
 
@@ -197,7 +197,7 @@ value of C<$?>, if you want to keep that ugly variable out of your code.
   my $ps = Process::Status->new( $status );
   my $ps = Process::Status->new; # acts as if you'd passed $?
 
-=head2 return_code
+=head2 status_code
 
 This returns the value of the integer return value, as you might have found in
 C<$?>.
