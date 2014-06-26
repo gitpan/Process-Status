@@ -2,15 +2,15 @@ use strict;
 use warnings;
 package Process::Status;
 # ABSTRACT: a handle on process termination, like $?
-$Process::Status::VERSION = '0.003';
+$Process::Status::VERSION = '0.004';
 use Config ();
 
 #pod =head1 OVERVIEW
 #pod
 #pod When you run a system command with C<system> or C<qx``> or a number of other
 #pod mechanisms, the process termination status gets put into C<$?> as an integer.
-#pod In C, it's a value of type C<pid_t>, and it stores a few pieces of data in
-#pod different bits.
+#pod In C, it's just an integer, and it stores a few pieces of data in different
+#pod bits.
 #pod
 #pod Process::Status just provides a few simple methods to make it easier to
 #pod inspect.  Almost the sole reason it exists is for its C<as_struct> method,
@@ -25,7 +25,7 @@ use Config ();
 #pod
 #pod =method new
 #pod
-#pod   my $ps = Process::Status->new( $pid_t );
+#pod   my $ps = Process::Status->new( $status );
 #pod   my $ps = Process::Status->new; # acts as if you'd passed $?
 #pod
 #pod =cut
@@ -33,26 +33,31 @@ use Config ();
 sub _self { ref $_[0] ? $_[0] : $_[0]->new($?); }
 
 sub new {
-  my $pid_t = defined $_[1] ? $_[1] : $?;
-  return bless \$pid_t, $_[0] if $pid_t >= 0;
+  my $status = defined $_[1] ? $_[1] : $?;
+  return bless \$status, $_[0] if $status >= 0;
 
-  return bless [ $pid_t, "$!", 0+$! ], 'Process::Status::Negative';
+  return bless [ $status, "$!", 0+$! ], 'Process::Status::Negative';
 }
 
-#pod =method pid_t
+#pod =method return_code
 #pod
-#pod This returns the value of the C<pid_t> integer, as you might have found in
+#pod This returns the value of the integer return value, as you might have found in
 #pod C<$?>.
 #pod
 #pod =cut
 
+sub return_code {
+  ${ $_[0]->_self }
+}
+
 sub pid_t {
+  # historical nonsense
   ${ $_[0]->_self }
 }
 
 #pod =method is_success
 #pod
-#pod This method returns true if the C<pid_t> is zero.
+#pod This method returns true if the status code is zero.
 #pod
 #pod =cut
 
@@ -60,7 +65,8 @@ sub is_success  { ${ $_[0]->_self } == 0 }
 
 #pod =method exitstatus
 #pod
-#pod This method returns the exit status of the C<pid_t>.
+#pod This method returns the exit status encoded in the status.  In other words,
+#pod it's the number in the top eight bits.
 #pod
 #pod =cut
 
@@ -92,15 +98,15 @@ sub cored      { !! (${ $_[0]->_self } & 128) }
 sub as_struct {
   my $self = $_[0]->_self;
 
-  my $pid_t = $self->pid_t;
+  my $rc = $self->return_code;
 
   return {
-    pid_t => $pid_t,
-    ($pid_t == -1 ? () : (
-      exitstatus => $pid_t >> 8,
-      cored      => ($pid_t & 128) ? 1 : 0,
+    return_code => $rc,
+    ($rc == -1 ? () : (
+      exitstatus => $rc >> 8,
+      cored      => ($rc & 128) ? 1 : 0,
 
-      (($pid_t & 127) ? (signal => $pid_t & 127) : ())
+      (($rc & 127) ? (signal => $rc & 127) : ())
     )),
   };
 }
@@ -117,30 +123,31 @@ sub __signal_name {
 }
 
 sub as_string {
-  my $self  = $_[0]->_self;
-  my $pid_t = $$self;
-  my $str  = "exited " . ($pid_t >> 8);
-  $str .= ", caught " . __signal_name($pid_t & 127) if $pid_t & 127;
-  $str .= "; dumped core" if $pid_t & 128;
+  my $self = $_[0]->_self;
+  my $rc   = $$self;
+  my $str  = "exited " . ($rc >> 8);
+  $str .= ", caught " . __signal_name($rc & 127) if $rc & 127;
+  $str .= "; dumped core" if $rc & 128;
 
   return $str;
 }
 
 {
   package Process::Status::Negative;
-$Process::Status::Negative::VERSION = '0.003';
+$Process::Status::Negative::VERSION = '0.004';
 BEGIN { our @ISA = 'Process::Status' }
-  sub pid_t { $_[0][0] }
-  sub is_success { return }
-  sub exitstatus { $_[0][0] }
-  sub signal     { 0 }
-  sub cored      { return }
+  sub return_code { $_[0][0] }
+  sub pid_t       { $_[0][0] } # historical nonsense
+  sub is_success  { return }
+  sub exitstatus  { $_[0][0] }
+  sub signal      { 0 }
+  sub cored       { return }
 
   sub as_struct {
     return {
-      pid_t    => $_[0][0],
-      strerror => $_[0][1],
-      errno    => $_[0][2],
+      return_code => $_[0][0],
+      strerror    => $_[0][1],
+      errno       => $_[0][2],
     }
   }
 
@@ -163,14 +170,14 @@ Process::Status - a handle on process termination, like $?
 
 =head1 VERSION
 
-version 0.003
+version 0.004
 
 =head1 OVERVIEW
 
 When you run a system command with C<system> or C<qx``> or a number of other
 mechanisms, the process termination status gets put into C<$?> as an integer.
-In C, it's a value of type C<pid_t>, and it stores a few pieces of data in
-different bits.
+In C, it's just an integer, and it stores a few pieces of data in different
+bits.
 
 Process::Status just provides a few simple methods to make it easier to
 inspect.  Almost the sole reason it exists is for its C<as_struct> method,
@@ -187,21 +194,22 @@ value of C<$?>, if you want to keep that ugly variable out of your code.
 
 =head2 new
 
-  my $ps = Process::Status->new( $pid_t );
+  my $ps = Process::Status->new( $status );
   my $ps = Process::Status->new; # acts as if you'd passed $?
 
-=head2 pid_t
+=head2 return_code
 
-This returns the value of the C<pid_t> integer, as you might have found in
+This returns the value of the integer return value, as you might have found in
 C<$?>.
 
 =head2 is_success
 
-This method returns true if the C<pid_t> is zero.
+This method returns true if the status code is zero.
 
 =head2 exitstatus
 
-This method returns the exit status of the C<pid_t>.
+This method returns the exit status encoded in the status.  In other words,
+it's the number in the top eight bits.
 
 =head2 signal
 
